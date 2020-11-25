@@ -1,0 +1,201 @@
+model Tour
+
+  uses "mmxprs";
+
+  declarations
+    !Objecyive function and month
+    month = 1..3
+
+    !Decision Variable to objective, Supply
+    Supply_Standard : array(month) of mpvar
+    Supply_Dairy : array(month) of mpvar
+    All_Supply : array(month) of mpvar
+
+    !Orange in uses for each type, minor decision var
+    Hamlin_Use_Standard : array(month) of mpvar
+    Pera_Use_Standard : array(month) of mpvar
+    Valen_Use_Standard : array(month) of mpvar
+
+    Hamlin_Use_Dairy : array(month) of mpvar
+    Pera_Use_Dairy : array(month) OF mpvar
+    Valen_Use_Dairy : array(month) of mpvar
+
+    !Demand
+    Demand_Standard : array(month) of integer
+    Demand_Dairy : array(month) of integer
+
+    !Var to check with aviability, buy for each month
+    Hamlin_Buy : array(month) of mpvar
+    Pera_Buy : array(month) of mpvar
+    Valen_Buy : array(month) of mpvar
+
+    !Aviability in each month
+    Hamlin_avia : array(month) of integer
+    Pera_avia : array(month) of integer
+    Valen_avia : array(month) of integer
+
+    !Proportion constraints
+    P_Hamlin_Standard : array(month) of mpvar
+    P_Pera_Standard : array(month) of mpvar
+    P_Valen_Standard : array(month) of mpvar
+    P_Hamlin_Dairy : array(month) of mpvar
+    P_Valen_Dairy : array(month) of mpvar
+    P_Pera_Dairy : array(month) of mpvar
+
+    !Orange keep
+    K_Hamlin : array(month) of mpvar
+    K_Pera : array(month) of mpvar
+    K_Valen : array(month) of mpvar
+    K_all : array(month) of mpvar
+  !Addition
+  Production_Cap : array(month) of integer
+  Hamlin_Production :array(month) of mpvar
+  Pera_Production :array(month) of mpvar
+  Valen_Production:array(month) of mpvar
+  m : array(month) of integer
+
+  Inventory_Hamlin :array(month) of linctr
+  Inventory_Pera :array(month) of linctr
+  Inventory_Valen :array(month) of linctr
+  end-declarations
+
+
+  !List numeric array
+  !Aviability Constaints Value
+  Hamlin_avia :: [1050,1225,350]
+  Pera_avia :: [925, 1225,1750]
+  Valen_avia :: [0,175,350]
+  !Demand Constrain Value
+  Demand_Standard :: [500,1500,700]
+  Demand_Dairy :: [200,100,100]
+  m ::[1,1,1]
+
+  !Objective function
+    profit := (1000*(SUM(i in month) Supply_Standard(i))) + (1100*(SUM(i in month) Supply_Dairy(i))) - (500000*(sum(i in month) m(i))) - (10*(SUM(i in month) K_all(i))) -((SUM(i in month) All_Supply(i)))
+  !!!!!!Contraints!!!!!!!!
+  !!!!!!!!!!!Create supply!!!!!!!!!!!
+
+    !Proportion created and specification for each products!
+  forall(i in month)do
+    3.5*Hamlin_Use_Standard(i) <= 0.25*Supply_Standard(i)
+    3.7*Pera_Use_Standard(i) >= 0.6*Supply_Standard(i)
+    3.4*Valen_Use_Standard(i) <= 0.4*Supply_Standard(i)
+  end-do
+
+  forall(i in month) do
+    3.5*Hamlin_Use_Dairy(i) <= 0.3*Supply_Dairy(i)
+    3.7*Pera_Use_Dairy(i) >= 0.5*Supply_Dairy(i)
+    3.4*Valen_Use_Dairy(i) <= 0.5*Supply_Dairy(i)
+    3.4*Valen_Use_Dairy(i) >= 0.15*Supply_Dairy(i)
+    end-do
+
+  !Buy friut check
+  forall(i in month) do
+    Hamlin_Use_Standard(i) + Hamlin_Use_Dairy(i) + K_Hamlin(i) + K_Hamlin(i)*3.5 + K_Pera(i)*3.7 + K_Valen(i)*3.4 = Hamlin_Buy(i)
+    Pera_Use_Standard(i) + Pera_Use_Dairy(i) + K_Pera(i) + K_Hamlin(i)*3.5 + K_Pera(i)*3.7 + K_Valen(i)*3.4 = Pera_Buy(i)
+    Valen_Use_Standard(i) + Valen_Use_Dairy(i)+ K_Valen(i) + K_Hamlin(i)*3.5 + K_Pera(i)*3.7 + K_Valen(i)*3.4 = Valen_Buy(i)
+  end-do
+
+  !Compare Buy and Aviability in mrk
+  forall(i in month) do
+    Hamlin_Buy(i) <= Hamlin_avia(i)
+    Pera_Buy(i) <= Pera_avia(i)
+    Valen_Buy(i) <= Valen_avia(i)
+  end-do
+
+  !Supply function
+  forall(i in month) do
+    Hamlin_Use_Standard(i)*3.5 + Pera_Use_Standard(i)*3.7 + Valen_Use_Standard(i)*3.4 = Supply_Standard(i)
+    Hamlin_Use_Dairy(i)*3.5 + Pera_Use_Dairy(i)*3.7 + Valen_Use_Dairy(i)*3.4 = Supply_Dairy(i)
+    Supply_Standard(i)+Supply_Dairy(i) = All_Supply(i)
+  end-do
+
+  !Demand = Supply constraints
+  forall(i in month) do
+    Supply_Standard(i) <= Demand_Standard(i)
+    Supply_Dairy(i) <= Demand_Dairy(i)
+  end-do
+
+
+  !Production Condition
+  !Set for smoothing optimization
+  forall(i in month)do
+      Hamlin_Buy(i) >= 1
+  end-do
+
+  !Keep stock
+  forall(i in month)do
+    K_Hamlin(i)+K_Pera(i)+K_Valen(i) = K_all(i)
+  end-do
+
+  !No inventory last month
+  K_Hamlin(3) = 0
+  K_Pera(3) = 0
+  K_Valen(3) = 0
+  Supply_Standard(3) = Demand_Standard(3)
+  Supply_Dairy(3) = Demand_Dairy(3)
+
+  !Improve production
+  !Create Var by each orange type to store how many tonne used in a production
+  forall(i in month)do
+    Hamlin_Production(i) = Hamlin_Use_Standard(i) + Hamlin_Use_Dairy(i)
+    Pera_Production(i) = Pera_Use_Standard(i) + Pera_Use_Dairy(i)
+    Valen_Production(i) = Valen_Use_Standard(i) + Valen_Use_Dairy(i)
+  end-do
+
+  !To keep Hamlin, Pera, Valencia
+  Inventory_Hamlin(1) := Hamlin_Buy(1) - Hamlin_Production(1) = K_Hamlin(1)
+  Inventory_Hamlin(2) := Hamlin_Buy(2) - Hamlin_Production(2) + K_Hamlin(1) = K_Hamlin(2)
+  Inventory_Hamlin(3) := Hamlin_Buy(3) - Hamlin_Production(3) + K_Hamlin(2) = K_Hamlin(3)
+
+  Inventory_Pera(1) := Pera_Buy(1) - Pera_Production(1) = K_Pera(1)
+  Inventory_Pera(2) := Pera_Buy(2) - Pera_Production(2) + K_Pera(1) = K_Pera(2)
+  Inventory_Pera(3) := Pera_Buy(3) - Pera_Production(3) + K_Pera(2) = K_Valen(3)
+
+  Inventory_Valen(1) := Valen_Buy(1) - Valen_Production(1) = K_Valen(1)
+  Inventory_Valen(2) := Valen_Buy(2) - Valen_Production(2) + K_Valen(1) = K_Valen(2)
+  Inventory_Valen(3) := Valen_Buy(3) - Valen_Production(3) + K_Valen(2) = K_Valen(3)
+
+  !!!!!!Q3!!!!!!!!!!!
+  Valen_Standard_cont(i) := New_Standard_Valen(i) + Old_Standard_Valen(i) = V_ Standard(i)
+  Valen_Dairy_cont(i) := New_Dairy_Valen(i) + Old_Dairy_Valen(i) = V_Dairy(i)
+  Old_Valen_cont(i) := Old_Standard_Valen(i) + Old_Dairy_Valen(i) = Old_Valen(i)
+  New_Valen_cont(i) := New_Standard_Valen(i) + New_Dairy_Valen(i) = New_Valen(i)
+    A0_cont(i) := Old_Valen(i) + New_Valen(i) = V_total(i)
+    V1_cont(i) := V_total(i) <= Valen_avia(i) + New_Valen_avai(i)
+    V2_cont(i) := New_Valen(i) <= New_Valen_avai(i)
+    V3_cont(i) := Old_Valen(i) <= Valen_avia(i)
+
+
+
+  maximize(profit)
+	writeln("Profit is: ", getobjval, " GBP")
+
+FORALL(i in month) DO
+	writeln("-----------------:")
+	writeln("Month: ",i)
+	writeln("Machine Capacity: ",getsol(Production_Cap(i)))
+		writeln("Supply_Standard= ", getsol(Supply_Standard(i)))
+		writeln("Supply_Dairy= ", getsol(Supply_Dairy(i)))
+		writeln("Production Capacity= ", getsol(All_Supply(i)))
+
+		writeln("Hamlin_Use_Standard is: ", getsol(Hamlin_Use_Standard(i)))
+		writeln("Hamlin_Use_Dairy is: ", getsol(Hamlin_Use_Dairy(i)))
+		writeln("K_Hamlin is: ", getsol(K_Hamlin(i)))
+    writeln("Hamlin_Buy is: ", getsol(Hamlin_Buy(i)))
+
+		writeln("Pera_Use_Standard is: ", getsol(Pera_Use_Standard(i)))
+		writeln("Pera_Use_Dairy is: ", getsol(Pera_Use_Dairy(i)))
+		writeln("K_Pera is: ", getsol(K_Pera(i)))
+		writeln("Pera_Buy is: ", getsol(Pera_Buy(i)))
+
+    writeln("Valen_Use_Standard is: ", getsol(Valen_Use_Standard(i)))
+		writeln("Valen_Use_Dairy is: ", getsol(Valen_Use_Dairy(i)))
+		writeln("K_Valen is: ", getsol(K_Valen(i)))
+    writeln("Valen_Buy is: ", getsol(Valen_Buy(i)))
+    writeln("------")
+
+
+	END-DO
+
+end-model
